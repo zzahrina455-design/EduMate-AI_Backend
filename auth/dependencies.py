@@ -34,7 +34,7 @@ def get_current_user(
     return user
 
 
-# 2. Fungsi pembatas akses khusus Admin
+# 1. Fungsi pembatas akses khusus Admin
 def get_current_admin(current_user: User = Depends(get_current_user)):
     if current_user.role != "admin":
         raise HTTPException(
@@ -44,17 +44,7 @@ def get_current_admin(current_user: User = Depends(get_current_user)):
     return current_user
 
 
-# 3. Fungsi pembatas akses khusus Dosen
-def get_current_dosen(current_user: User = Depends(get_current_user)):
-    if current_user.role != "dosen" and current_user.role != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Akses ditolak. Halaman ini khusus untuk Dosen.",
-        )
-    return current_user
-
-
-# 4. Fungsi pembatas akses khusus Mahasiswa
+# 2. Fungsi pembatas akses khusus Mahasiswa
 def get_current_mahasiswa(current_user: User = Depends(get_current_user)):
     if current_user.role != "mahasiswa" and current_user.role != "admin":
         raise HTTPException(
