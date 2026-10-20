@@ -2,3 +2,7 @@
 __pycache__/
 .env
 .vscode
+__pycache__/
+*.db
+*.sqlite3
+uploads/

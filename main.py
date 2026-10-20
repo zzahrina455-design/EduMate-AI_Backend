@@ -5,9 +5,22 @@ from sqlalchemy import text
 from database import engine, Base
 import models
 from auth.routes import router as auth_router
+from admin_routes import router as admin_router
+from student_routes import router as student_router
+from student_chat_routes import router as student_chat_router
 
-app = FastAPI(title="EduMate AI API", version="1.0.0")
+Base.metadata.create_all(bind=engine)
 
+app = FastAPI(title="EduMate AI API")
+
+app.include_router(auth_router)
+app.include_router(admin_router)
+app.include_router(student_router)
+app.include_router(student_chat_router)
+
+@app.get("/")
+def read_root():
+    return {"message": "Server EduMate AI berjalan dengan baik!"}
 
 # =========================
 # CORS
