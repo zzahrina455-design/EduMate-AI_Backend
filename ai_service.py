@@ -144,7 +144,6 @@ Jangan tambahkan markdown atau teks di luar JSON.
 
     jawaban = jawaban.strip()
 
-    # Mengantisipasi respons yang dibungkus dengan markdown.
     if jawaban.startswith("```"):
         baris = jawaban.splitlines()
 
@@ -168,7 +167,6 @@ Jangan tambahkan markdown atau teks di luar JSON.
             "Hasil analisis harus berupa array JSON."
         )
 
-    # Validasi dan normalisasi hasil AI.
     hasil_valid = []
     id_valid = {
         lomba["competition_id"]
@@ -182,7 +180,6 @@ Jangan tambahkan markdown atau teks di luar JSON.
 
         competition_id = item.get("competition_id")
         skor = item.get("skor_kecocokan")
-        tingkat = item.get("tingkat_kecocokan")
         alasan = item.get("alasan_kecocokan")
         kelebihan = item.get("kelebihan_proyek")
         kekurangan = item.get("kekurangan_proyek")
@@ -209,7 +206,6 @@ Jangan tambahkan markdown atau teks di luar JSON.
         if not isinstance(kekurangan, list):
             continue
 
-        # Tingkat kecocokan ditentukan dari skor agar konsisten.
         if skor >= 80:
             tingkat = "Sangat cocok"
         elif skor >= 60:
@@ -242,3 +238,44 @@ Jangan tambahkan markdown atau teks di luar JSON.
     )
 
     return hasil_valid
+
+
+def jawab_pertanyaan_chat(pertanyaan: str) -> str:
+    """
+    Menjawab pertanyaan umum mahasiswa menggunakan Mercury.
+    """
+
+    pertanyaan = pertanyaan.strip()
+
+    if not pertanyaan:
+        raise ValueError("Pertanyaan tidak boleh kosong.")
+
+    response = client.chat.completions.create(
+        model=MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "Kamu adalah EduMate AI, asisten belajar mahasiswa. "
+                    "Jawab menggunakan bahasa Indonesia yang ramah, "
+                    "jelas, dan mudah dipahami. "
+                    "Jelaskan konsep secara bertahap jika diperlukan. "
+                    "Jika tidak mengetahui fakta, sampaikan dengan jujur. "
+                    "Jangan mengarang sumber atau referensi."
+                ),
+            },
+            {
+                "role": "user",
+                "content": pertanyaan,
+            },
+        ],
+        max_tokens=1500,
+        reasoning_effort="low",
+    )
+
+    jawaban = response.choices[0].message.content
+
+    if not jawaban or not jawaban.strip():
+        raise RuntimeError("AI tidak menghasilkan jawaban.")
+
+    return jawaban.strip()

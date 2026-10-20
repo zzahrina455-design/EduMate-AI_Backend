@@ -6,3 +6,9 @@ edumate.db
 uploads/
 *.pyc
 
+
+edumate_backup_before_postgres.db
+data/chroma/
+
+# Local ZIP archives
+*.zip

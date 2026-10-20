@@ -9,6 +9,7 @@ from pypdf import PdfReader
 from docx import Document
 
 from database import get_db
+from auth.dependencies import get_current_user
 import models
 import schemas
 from rag_service import cari_lomba_relevan
@@ -52,6 +53,7 @@ def ekstrak_teks_docx(file_path: str) -> str:
 async def upload_dokumen_proyek(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     nama_asli = os.path.basename(file.filename or "")
 
@@ -152,6 +154,7 @@ async def upload_dokumen_proyek(
 def rekomendasikan_lomba(
     request: schemas.RekomendasiRequest,
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     # 1. Cari dokumen proyek.
     dokumen = (
@@ -198,16 +201,15 @@ def rekomendasikan_lomba(
             "rekomendasi": [],
         }
 
-    # 3. Analisis kandidat menggunakan Mercury.
+    # 3. Analisis kandidat menggunakan layanan AI yang dikonfigurasi.
     try:
         hasil_ai = analisis_kecocokan_proyek(
             teks_proyek,
             daftar_lomba,
         )
     except Exception as error:
-        logger.exception("Analisis AI dengan Mercury gagal.")
+        logger.exception("Analisis AI gagal.")
 
-        # Detail teknis dicatat di terminal, bukan API key.
         raise HTTPException(
             status_code=502,
             detail=(
@@ -239,9 +241,7 @@ def rekomendasikan_lomba(
         kelebihan = analisis.get("kelebihan_proyek")
         kekurangan = analisis.get("kekurangan_proyek")
         skor = analisis.get("skor_kecocokan")
-        tingkat = analisis.get("tingkat_kecocokan")
 
-        # Abaikan hasil AI yang tidak memenuhi format.
         if not isinstance(alasan, str) or not alasan.strip():
             continue
 

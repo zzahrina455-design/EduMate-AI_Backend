@@ -9,6 +9,7 @@ import models
 from auth.routes import router as auth_router
 from lomba.routes import router as lomba_router
 from proyek.routes import router as proyek_router
+from chat.routes import router as chat_router
 
 
 app = FastAPI(title="EduMate AI API", version="1.0.0")
@@ -35,6 +36,7 @@ Base.metadata.create_all(bind=engine)
 app.include_router(auth_router)
 app.include_router(lomba_router)
 app.include_router(proyek_router)
+app.include_router(chat_router)
 
 
 # ROOT

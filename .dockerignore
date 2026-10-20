@@ -1,0 +1,10 @@
+.env
+.git
+.venv
+venv
+__pycache__
+*.pyc
+edumate.db
+uploads/
+data/chroma/
+.pytest_cache
