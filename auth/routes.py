@@ -37,22 +37,21 @@ def create_access_token(data: dict):
 
 @router.post("/register")
 def register(user_data: UserRegister, db: Session = Depends(get_db)):
-    existing_user = db.query(User).filter(User.email == user_data.email).first(
-    )
+    existing_user = db.query(User).filter(User.email == user_data.email).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Email sudah terdaftar.")
 
     email_lower = user_data.email.lower()
 
+    # Logika penentuan role (Dosen sudah dihapus)
     if email_lower == "admin@edumate_ai.id" or "admin" in email_lower:
         assigned_role = "admin"
-    elif "dosen" in email_lower or email_lower.endswith("@dosen.uns.ac.id"):
-        assigned_role = "dosen"
     else:
         assigned_role = "mahasiswa"
 
     hashed_pw = hash_password(user_data.password)
 
+    # Nama yang diinput otomatis tersimpan dan jadi data dasar profil
     new_user = User(
         name=user_data.name,
         email=user_data.email,

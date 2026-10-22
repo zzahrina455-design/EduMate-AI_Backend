@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from database import Base  # <--- Ini import yang hilang
+from database import Base
 
 class User(Base):
     __tablename__ = "users"
@@ -12,6 +12,13 @@ class User(Base):
     password = Column(String, nullable=False)
     role = Column(String, default="mahasiswa")
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    # ==========================
+    # KOLOM PROFIL MAHASISWA
+    # ==========================
+    university = Column(String, nullable=True)
+    major = Column(String, nullable=True)
+    bio = Column(Text, nullable=True)
 
     # Relationships
     chat_sessions = relationship("ChatSession", back_populates="user", cascade="all, delete")

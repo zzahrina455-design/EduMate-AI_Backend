@@ -9,23 +9,19 @@ from admin_routes import router as admin_router
 from student_routes import router as student_router
 from student_chat_routes import router as student_chat_router
 
+# =========================
+# INISIALISASI DATABASE
+# =========================
 Base.metadata.create_all(bind=engine)
 
+# =========================
+# INISIALISASI APLIKASI
+# =========================
 app = FastAPI(title="EduMate AI API")
 
-app.include_router(auth_router)
-app.include_router(admin_router)
-app.include_router(student_router)
-app.include_router(student_chat_router)
-
-@app.get("/")
-def read_root():
-    return {"message": "Server EduMate AI berjalan dengan baik!"}
-
 # =========================
-# CORS
+# MIDDLEWARE (CORS)
 # =========================
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -37,29 +33,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 # =========================
-# DATABASE
+# REGISTRASI ROUTER
 # =========================
-
-Base.metadata.create_all(bind=engine)
-
-
-# =========================
-# ROUTES
-# =========================
-
 app.include_router(auth_router)
+app.include_router(admin_router)
+app.include_router(student_router)
+app.include_router(student_chat_router)
 
-
+# =========================
+# ROOT & UTILITY ENDPOINTS
+# =========================
 @app.get("/")
 def root():
-    return {"message": "EduMate AI Backend is running"}
-
+    return {"message": "EduMate AI Backend is running smoothly!"}
 
 @app.get("/test-db")
 def test_db():
     with engine.connect() as connection:
         result = connection.execute(text("SELECT 1"))
-
         return {"database": "connected", "result": result.scalar()}

@@ -29,7 +29,7 @@ class TokenData(BaseModel):
 
 class UserUpdateProfile(BaseModel):
     name: Optional[str] = None
-
+    
 class UserCreateAdmin(BaseModel):
     name: str
     email: EmailStr
@@ -42,6 +42,31 @@ class UserResponse(BaseModel):
     email: EmailStr
     role: str
     created_at: datetime
+    # Menambahkan field profil agar Admin juga bisa melihat datanya
+    university: Optional[str] = None
+    major: Optional[str] = None
+    bio: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+# --- Schema Khusus Untuk Fitur Profile ---
+class UserProfileBase(BaseModel):
+    name: str
+    email: str
+    university: Optional[str] = None
+    major: Optional[str] = None
+    bio: Optional[str] = None
+
+class UserProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    university: Optional[str] = None
+    major: Optional[str] = None
+    bio: Optional[str] = None
+
+class UserProfileResponse(UserProfileBase):
+    id: int
+    role: str
 
     class Config:
         from_attributes = True
