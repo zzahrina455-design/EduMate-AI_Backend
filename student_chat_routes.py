@@ -38,10 +38,12 @@ async def ask_ai_student(
 
             extracted_text = extract_text_from_file(saved_file_path, file_ext)
             if extracted_text:
-                file_context = f"\n\n--- DOKUMEN PROPOSAL MAHASISWA ---\n{extracted_text[:4000]}\n--- AKHIR DOKUMEN ---"
+                # PERBAIKAN: Batasi teks proposal maksimal 1500 karakter agar tidak boros token
+                file_context = f"\n\n--- DOKUMEN PROPOSAL MAHASISWA ---\n{extracted_text[:1500]}\n--- AKHIR DOKUMEN ---"
 
-        # 2. Ambil data lomba ASLI dari database PostgreSQL
-        competitions = db.query(Competition).all()
+        # 2. Ambil data lomba ASLI dari database PostgreSQL (Batasi 10 lomba terbaru)
+        # PERBAIKAN: Gunakan .limit(10) agar tidak mengirim semua lomba sekaligus ke AI
+        competitions = db.query(Competition).order_by(Competition.created_at.desc()).limit(10).all()
         
         # JIKA DATABASE KOSONG: Cegah pemanggilan LLM agar tidak terjadi halusinasi
         if not competitions or len(competitions) == 0:
@@ -72,7 +74,14 @@ async def ask_ai_student(
         # Format data lomba asli untuk dikirim ke LLM
         comp_context = "\n--- DATA LOMBA TERVERIFIKASI DI DATABASE EDUMATE AI ---\n"
         for idx, c in enumerate(competitions, 1):
-            deadline_str = c.deadline.strftime('%d %B %Y') if c.deadline else 'Cek Situs Resmi'
+            if c.deadline:
+                if isinstance(c.deadline, datetime):
+                    deadline_str = c.deadline.strftime('%d %B %Y')
+                else:
+                    deadline_str = str(c.deadline)
+            else:
+                deadline_str = 'Cek Situs Resmi'
+
             comp_context += (
                 f"Lomba #{idx}:\n"
                 f"Nama Lomba: {c.title}\n"

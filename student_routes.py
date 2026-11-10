@@ -70,7 +70,8 @@ async def get_competitions(
             "title": comp.title,
             "description": comp.description,
             "requirements": comp.requirements,
-            "deadline": comp.deadline.strftime("%Y-%m-%d") if comp.deadline else "Segera",
+            # PERBAIKAN DI SINI: Langsung gunakan comp.deadline karena tipenya sudah string/text
+            "deadline": comp.deadline if comp.deadline else "Segera",
             "social_media_link": comp.social_media_link
         })
 
