@@ -3,19 +3,26 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 import bcrypt
 
-from database import get_db
-from models import User, ChatSession, PitchingSession, SystemSetting, UserActivity
-from schemas import (
-    AdminDashboardStats, 
-    UserActivityResponse, 
-    UserResponse, 
-    UserCreateAdmin, 
-    UserUpdateProfile
+from app.db.database import get_db
+from app.models.models import (
+    User,
+    ChatSession,
+    PitchingSession,
+    SystemSetting,
+    UserActivity,
 )
-from auth.dependencies import get_current_admin_user
-from scraper_service import fetch_and_store_ti_competitions
+from app.schemas.schemas import (
+    AdminDashboardStats,
+    UserActivityResponse,
+    UserResponse,
+    UserCreateAdmin,
+    UserUpdateProfile,
+)
+from app.auth.dependencies import get_current_admin_user
+from app.services.scraper_service import fetch_and_store_ti_competitions
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
+
 
 # Helper function hash password
 def hash_password(password: str) -> str:
@@ -27,10 +34,11 @@ def hash_password(password: str) -> str:
 # 1. DASHBOARD & ACTIVITIES ENDPOINTS
 # ==========================================
 
+
 @router.get("/dashboard", response_model=AdminDashboardStats)
 def get_admin_dashboard(
-    db: Session = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
+    db: Session = Depends(get_db), admin: User = Depends(
+        get_current_admin_user)
 ):
     # Count total registered users
     total_users = db.query(User).count()
@@ -48,65 +56,86 @@ def get_admin_dashboard(
 
     # Get AI status
     try:
-        ai_setting = db.query(SystemSetting).filter(SystemSetting.key == "ai_status").first()
-        ai_status = True if (ai_setting and ai_setting.value == "active") else False
+        ai_setting = (
+            db.query(SystemSetting).filter(
+                SystemSetting.key == "ai_status").first()
+        )
+        ai_status = True if (
+            ai_setting and ai_setting.value == "active") else False
     except Exception:
         ai_status = True
 
     # 7-day usage stats
     today = datetime.utcnow().date()
     seven_days_ago = today - timedelta(days=6)
-    
+
     weekly_stats = []
     for i in range(7):
         current_day = seven_days_ago + timedelta(days=i)
         next_day = current_day + timedelta(days=1)
-        
+
         try:
-            chat_count = db.query(ChatSession).filter(
-                ChatSession.created_at >= current_day, 
-                ChatSession.created_at < next_day
-            ).count()
-            pitch_count = db.query(PitchingSession).filter(
-                PitchingSession.created_at >= current_day, 
-                PitchingSession.created_at < next_day
-            ).count()
+            chat_count = (
+                db.query(ChatSession)
+                .filter(
+                    ChatSession.created_at >= current_day,
+                    ChatSession.created_at < next_day,
+                )
+                .count()
+            )
+            pitch_count = (
+                db.query(PitchingSession)
+                .filter(
+                    PitchingSession.created_at >= current_day,
+                    PitchingSession.created_at < next_day,
+                )
+                .count()
+            )
         except Exception:
             chat_count = 0
             pitch_count = 0
-        
-        weekly_stats.append({
-            "date": current_day.strftime("%Y-%m-%d"),
-            "day": current_day.strftime("%a"),
-            "total_usage": chat_count + pitch_count
-        })
+
+        weekly_stats.append(
+            {
+                "date": current_day.strftime("%Y-%m-%d"),
+                "day": current_day.strftime("%a"),
+                "total_usage": chat_count + pitch_count,
+            }
+        )
 
     return {
         "total_users": total_users,
         "total_chat_sessions": total_chats,
         "total_pitching_simulations": total_pitchings,
         "ai_status": ai_status,
-        "weekly_usage_volume": weekly_stats
+        "weekly_usage_volume": weekly_stats,
     }
 
 
 @router.get("/activities", response_model=list[UserActivityResponse])
 def get_recent_activities(
-    db: Session = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
+    db: Session = Depends(get_db), admin: User = Depends(
+        get_current_admin_user)
 ):
     try:
-        activities = db.query(UserActivity).order_by(UserActivity.created_at.desc()).limit(15).all()
+        activities = (
+            db.query(UserActivity)
+            .order_by(UserActivity.created_at.desc())
+            .limit(15)
+            .all()
+        )
         result = []
         for act in activities:
-            result.append({
-                "id": act.id,
-                "user_name": act.user.name if act.user else "Unknown",
-                "user_email": act.user.email if act.user else "Unknown",
-                "activity_type": act.activity_type,
-                "description": act.description,
-                "created_at": act.created_at
-            })
+            result.append(
+                {
+                    "id": act.id,
+                    "user_name": act.user.name if act.user else "Unknown",
+                    "user_email": act.user.email if act.user else "Unknown",
+                    "activity_type": act.activity_type,
+                    "description": act.description,
+                    "created_at": act.created_at,
+                }
+            )
         return result
     except Exception:
         return []
@@ -116,11 +145,16 @@ def get_recent_activities(
 def toggle_ai_status(
     status: bool,
     db: Session = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
+    admin: User = Depends(get_current_admin_user),
 ):
-    ai_setting = db.query(SystemSetting).filter(SystemSetting.key == "ai_status").first()
+    ai_setting = (
+        db.query(SystemSetting).filter(
+            SystemSetting.key == "ai_status").first()
+    )
     if not ai_setting:
-        ai_setting = SystemSetting(key="ai_status", value="active" if status else "inactive")
+        ai_setting = SystemSetting(
+            key="ai_status", value="active" if status else "inactive"
+        )
         db.add(ai_setting)
     else:
         ai_setting.value = "active" if status else "inactive"
@@ -132,10 +166,11 @@ def toggle_ai_status(
 # 2. KELOLA USER ENDPOINTS
 # ==========================================
 
+
 @router.get("/users", response_model=list[UserResponse])
 def get_all_users(
-    db: Session = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
+    db: Session = Depends(get_db), admin: User = Depends(
+        get_current_admin_user)
 ):
     return db.query(User).order_by(User.id.desc()).all()
 
@@ -146,7 +181,8 @@ def create_user_by_admin(
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin_user)
 ):
-    existing_user = db.query(User).filter(User.email == user_data.email).first()
+    existing_user = db.query(User).filter(
+        User.email == user_data.email).first()
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -164,11 +200,15 @@ def create_user_by_admin(
     db.commit()
     db.refresh(new_user)
 
+    # Ambil data ke variabel lokal dulu agar linter tidak protes
+    u_email = getattr(new_user, "email", "Unknown")
+    u_role = getattr(new_user, "role", "mahasiswa")
+
     # Log Aktivitas
     activity = UserActivity(
         user_id=admin.id,
         activity_type="Kelola User",
-        description=f"Admin menambahkan user baru: {new_user.email} ({new_user.role})"
+        description=f"Admin menambahkan user baru: {u_email} ({u_role})"
     )
     db.add(activity)
     db.commit()
@@ -180,7 +220,7 @@ def create_user_by_admin(
 def delete_user_by_admin(
     user_id: int,
     db: Session = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
+    admin: User = Depends(get_current_admin_user),
 ):
     user_to_delete = db.query(User).filter(User.id == user_id).first()
     if not user_to_delete:
@@ -192,7 +232,7 @@ def delete_user_by_admin(
     if user_to_delete.id == admin.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Anda tidak dapat menghapus akun Anda sendiri."
+            detail="Anda tidak dapat menghapus akun Anda sendiri.",
         )
 
     user_email = user_to_delete.email
@@ -203,7 +243,7 @@ def delete_user_by_admin(
     activity = UserActivity(
         user_id=admin.id,
         activity_type="Kelola User",
-        description=f"Admin menghapus user: {user_email}"
+        description=f"Admin menghapus user: {user_email}",
     )
     db.add(activity)
     db.commit()
@@ -215,6 +255,7 @@ def delete_user_by_admin(
 # 3. PROFILE ADMIN ENDPOINTS
 # ==========================================
 
+
 @router.get("/profile", response_model=UserResponse)
 def get_admin_profile(admin: User = Depends(get_current_admin_user)):
     return admin
@@ -224,17 +265,18 @@ def get_admin_profile(admin: User = Depends(get_current_admin_user)):
 def update_admin_profile(
     profile_data: UserUpdateProfile,
     db: Session = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
+    admin: User = Depends(get_current_admin_user),
 ):
     if profile_data.name:
         admin.name = profile_data.name
 
     if profile_data.email and profile_data.email != admin.email:
-        existing_email = db.query(User).filter(User.email == profile_data.email).first()
+        existing_email = db.query(User).filter(
+            User.email == profile_data.email).first()
         if existing_email:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email sudah digunakan oleh akun lain."
+                detail="Email sudah digunakan oleh akun lain.",
             )
         admin.email = profile_data.email
 
@@ -248,7 +290,7 @@ def update_admin_profile(
     activity = UserActivity(
         user_id=admin.id,
         activity_type="Profil Admin",
-        description="Admin memperbarui informasi profil akun."
+        description="Admin memperbarui informasi profil akun.",
     )
     db.add(activity)
     db.commit()
@@ -260,42 +302,58 @@ def update_admin_profile(
 # 4. RIWAYAT AI ENDPOINTS (ADMIN)
 # ==========================================
 
+
 @router.get("/ai-history")
 def get_all_ai_history(
-    db: Session = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
+    db: Session = Depends(get_db), admin: User = Depends(
+        get_current_admin_user)
 ):
     # Ambil riwayat chat / tanya AI
-    chat_logs = db.query(ChatSession).order_by(ChatSession.created_at.desc()).all()
-    
+    chat_logs = db.query(ChatSession).order_by(
+        ChatSession.created_at.desc()).all()
+
     # Ambil riwayat pitching / latihan AI
-    pitch_logs = db.query(PitchingSession).order_by(PitchingSession.created_at.desc()).all()
-    
+    pitch_logs = (
+        db.query(PitchingSession).order_by(
+            PitchingSession.created_at.desc()).all()
+    )
+
     history = []
 
     for c in chat_logs:
-        history.append({
-            "id": f"chat-{c.id}",
-            "user_name": c.user.name if c.user else "Unknown",
-            "user_email": c.user.email if c.user else "Unknown",
-            "feature": "Tanya AI",
-            "prompt_or_mode": c.prompt,
-            "response_summary": c.response[:150] + "..." if len(c.response) > 150 else c.response,
-            "file_path": c.uploaded_file_path,
-            "created_at": c.created_at
-        })
+        history.append(
+            {
+                "id": f"chat-{c.id}",
+                "user_name": c.user.name if c.user else "Unknown",
+                "user_email": c.user.email if c.user else "Unknown",
+                "feature": "Tanya AI",
+                "prompt_or_mode": c.prompt,
+                "response_summary": (
+                    c.response[:150] + "..." if len(
+                        c.response) > 150 else c.response
+                ),
+                "file_path": c.uploaded_file_path,
+                "created_at": c.created_at,
+            }
+        )
 
     for p in pitch_logs:
-        history.append({
-            "id": f"pitch-{p.id}",
-            "user_name": p.user.name if p.user else "Unknown",
-            "user_email": p.user.email if p.user else "Unknown",
-            "feature": "Simulasi Pitching",
-            "prompt_or_mode": f"Mode: {p.mode}",
-            "response_summary": p.ai_feedback[:150] + "..." if p.ai_feedback and len(p.ai_feedback) > 150 else (p.ai_feedback or "Belum ada umpan balik"),
-            "file_path": p.proposal_path,
-            "created_at": p.created_at
-        })
+        history.append(
+            {
+                "id": f"pitch-{p.id}",
+                "user_name": p.user.name if p.user else "Unknown",
+                "user_email": p.user.email if p.user else "Unknown",
+                "feature": "Simulasi Pitching",
+                "prompt_or_mode": f"Mode: {p.mode}",
+                "response_summary": (
+                    p.ai_feedback[:150] + "..."
+                    if p.ai_feedback and len(p.ai_feedback) > 150
+                    else (p.ai_feedback or "Belum ada umpan balik")
+                ),
+                "file_path": p.proposal_path,
+                "created_at": p.created_at,
+            }
+        )
 
     # Urutkan berdasarkan tanggal terbaru
     history.sort(key=lambda x: x["created_at"], reverse=True)
@@ -306,20 +364,23 @@ def get_all_ai_history(
 # 5. SINKRONISASI DATA LOMBA TI (SCRAPER)
 # ==========================================
 
+
 @router.post("/sync-competitions")
 async def sync_competitions_data(
-    db: Session = Depends(get_db),
-    admin: User = Depends(get_current_admin_user)
+    db: Session = Depends(get_db), admin: User = Depends(
+        get_current_admin_user)
 ):
     await fetch_and_store_ti_competitions(db)
-    
+
     # Log Aktivitas Admin
     activity = UserActivity(
         user_id=admin.id,
         activity_type="Info Lomba",
-        description="Admin memicu sinkronisasi otomatis data lomba TI dari Puspresnas & Devpost."
+        description="Admin memicu sinkronisasi otomatis data lomba",
     )
     db.add(activity)
     db.commit()
 
-    return {"message": "Pembaruan data lomba TI dari Puspresnas & Devpost berhasil dijalankan!"}
+    return {
+        "message": "Pembaruan data lomba berhasil dijalankan!"
+    }

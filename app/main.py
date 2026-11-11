@@ -2,12 +2,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
-from database import engine, Base
-import models
-from auth.routes import router as auth_router
-from admin_routes import router as admin_router
-from student_routes import router as student_router
-from student_chat_routes import router as student_chat_router
+from app.db.database import engine, Base
+from app.models.models import User
+from app.auth.routes import router as auth_router
+from app.api.admin_routes import router as admin_router
+from app.api.student_routes import router as student_router
+from app.api.student_chat_routes import router as student_chat_router
 
 # =========================
 # INISIALISASI DATABASE
@@ -41,12 +41,14 @@ app.include_router(admin_router)
 app.include_router(student_router)
 app.include_router(student_chat_router)
 
+
 # =========================
 # ROOT & UTILITY ENDPOINTS
 # =========================
 @app.get("/")
 def root():
     return {"message": "EduMate AI Backend is running smoothly!"}
+
 
 @app.get("/test-db")
 def test_db():

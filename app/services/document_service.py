@@ -3,6 +3,7 @@ from pypdf import PdfReader
 from docx import Document
 from PIL import Image
 
+
 def extract_text_from_file(file_path: str, file_extension: str) -> str:
     """
     Mengekstrak teks dari file PDF, DOCX, TXT, atau Gambar.
@@ -29,7 +30,7 @@ def extract_text_from_file(file_path: str, file_extension: str) -> str:
                 extracted_text = f.read()
 
         elif ext in [".jpg", ".jpeg", ".png"]:
-            # Catatan: Teks gambar disederhanakan sebagai penanda konteks gambar
+            # Teks gambar disederhanakan sebagai penanda konteks gambar
             extracted_text = f"[Gambar Diunggah: {os.path.basename(file_path)}]"
 
     except Exception as e:

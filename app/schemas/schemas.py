@@ -6,18 +6,22 @@ from datetime import datetime
 # 1. AUTH SCHEMAS
 # ==========================================
 
+
 class UserRegister(BaseModel):
     name: str
     email: EmailStr
     password: str
 
+
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
+
 class Token(BaseModel):
     access_token: str
     token_type: str
+
 
 class TokenData(BaseModel):
     email: Optional[str] = None
@@ -27,14 +31,17 @@ class TokenData(BaseModel):
 # 2. USER & PROFILE SCHEMAS
 # ==========================================
 
+
 class UserUpdateProfile(BaseModel):
     name: Optional[str] = None
-    
+
+
 class UserCreateAdmin(BaseModel):
     name: str
     email: EmailStr
     password: str
     role: str = "mahasiswa"
+
 
 class UserResponse(BaseModel):
     id: int
@@ -50,6 +57,7 @@ class UserResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
 # --- Schema Khusus Untuk Fitur Profile ---
 class UserProfileBase(BaseModel):
     name: str
@@ -58,11 +66,13 @@ class UserProfileBase(BaseModel):
     major: Optional[str] = None
     bio: Optional[str] = None
 
+
 class UserProfileUpdate(BaseModel):
     name: Optional[str] = None
     university: Optional[str] = None
     major: Optional[str] = None
     bio: Optional[str] = None
+
 
 class UserProfileResponse(UserProfileBase):
     id: int
@@ -76,12 +86,14 @@ class UserProfileResponse(UserProfileBase):
 # 3. ADMIN DASHBOARD SCHEMAS
 # ==========================================
 
+
 class AdminDashboardStats(BaseModel):
     total_users: int
     total_chat_sessions: int
     total_pitching_simulations: int
     ai_status: bool
     weekly_usage_volume: List[dict]
+
 
 class UserActivityResponse(BaseModel):
     id: int

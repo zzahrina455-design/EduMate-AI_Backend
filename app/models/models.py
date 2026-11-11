@@ -1,7 +1,8 @@
 from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from database import Base
+from app.db.database import Base
+
 
 class User(Base):
     __tablename__ = "users"
@@ -21,9 +22,16 @@ class User(Base):
     bio = Column(Text, nullable=True)
 
     # Relationships
-    chat_sessions = relationship("ChatSession", back_populates="user", cascade="all, delete")
-    pitchings = relationship("PitchingSession", back_populates="user", cascade="all, delete")
-    activities = relationship("UserActivity", back_populates="user", cascade="all, delete")
+    chat_sessions = relationship(
+        "ChatSession", back_populates="user", cascade="all, delete"
+    )
+    pitchings = relationship(
+        "PitchingSession", back_populates="user", cascade="all, delete"
+    )
+    activities = relationship(
+        "UserActivity", back_populates="user", cascade="all, delete"
+    )
+
 
 class SystemSetting(Base):
     __tablename__ = "system_settings"
@@ -31,7 +39,9 @@ class SystemSetting(Base):
     id = Column(Integer, primary_key=True, index=True)
     key = Column(String, unique=True, index=True, nullable=False)
     value = Column(String, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 
 class UserActivity(Base):
     __tablename__ = "user_activities"
@@ -43,6 +53,7 @@ class UserActivity(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="activities")
+
 
 class ChatSession(Base):
     __tablename__ = "chat_sessions"
@@ -56,6 +67,7 @@ class ChatSession(Base):
 
     user = relationship("User", back_populates="chat_sessions")
 
+
 class PitchingSession(Base):
     __tablename__ = "pitching_sessions"
 
@@ -68,6 +80,7 @@ class PitchingSession(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="pitchings")
+
 
 class Competition(Base):
     __tablename__ = "competitions"

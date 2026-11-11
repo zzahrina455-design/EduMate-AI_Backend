@@ -13,15 +13,17 @@ PRIORITY_MODELS = [
     "llama-3.2-11b-vision-preview"
 ]
 
+
 def get_filtered_groq_models():
     """
-    Mengambil model aktif dari Groq dan memfilter hanya model Chat/RAG yang valid.
+    Mengambil model aktif dari Groq dan memfilter hanya model RAG yang valid.
     """
     try:
         models_page = client.models.list()
         # Ambil semua ID model yang aktif
-        all_active = [m.id for m in models_page.data if getattr(m, 'active', True)]
-        
+        all_active = [m.id for m in models_page.data if getattr(
+            m, 'active', True)]
+
         # Kata kunci model yang WAJIB DIABAIKAN (bukan model chat umum)
         ignored_keywords = [
             "safeguard", "guard", "whisper", "orpheus", "allam", 
@@ -29,7 +31,7 @@ def get_filtered_groq_models():
         ]
 
         valid_models = []
-        # Utamakan model prioritas utama terlebih dahulu jika ada di daftar aktif
+        # Utamakan model prioritas terlebih dahulu jika ada di daftar aktif
         for pm in PRIORITY_MODELS:
             if pm in all_active and pm not in valid_models:
                 valid_models.append(pm)
@@ -46,6 +48,7 @@ def get_filtered_groq_models():
         print(f"[GROQ MODEL FETCH WARNING] Gagal mengambil list model: {e}")
 
     return PRIORITY_MODELS
+
 
 def call_openrouter(prompt: str, system_prompt: str = "") -> str:
     """
@@ -67,11 +70,13 @@ def call_openrouter(prompt: str, system_prompt: str = "") -> str:
                 top_p=1,
                 stream=False,
             )
-            print(f"[GROQ LLM SUCCESS] Berhasil menggunakan model aktif: {model_name}")
+            print(
+                f"[GROQ LLM SUCCESS] Berhasil menggunakan model aktif: {model_name}")
             return completion.choices[0].message.content
 
         except Exception as e:
             last_error = str(e)
-            print(f"[GROQ LLM NOTICE] Model '{model_name}' gagal ({e}). Mencoba model berikutnya...")
+            print(
+                f"[GROQ LLM NOTICE] Model '{model_name}' gagal ({e}). Mencoba model berikutnya...")
 
     return f"Error LLM Service (Groq): {last_error}"

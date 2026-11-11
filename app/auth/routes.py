@@ -4,9 +4,9 @@ import bcrypt
 from datetime import datetime, timedelta, timezone
 from jose import jwt
 
-from database import get_db
-from models import User
-from schemas import UserRegister, UserLogin
+from app.db.database import get_db
+from app.models.models import User
+from app.schemas.schemas import UserRegister, UserLogin
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -37,7 +37,8 @@ def create_access_token(data: dict):
 
 @router.post("/register")
 def register(user_data: UserRegister, db: Session = Depends(get_db)):
-    existing_user = db.query(User).filter(User.email == user_data.email).first()
+    existing_user = db.query(User).filter(
+        User.email == user_data.email).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Email sudah terdaftar.")
 

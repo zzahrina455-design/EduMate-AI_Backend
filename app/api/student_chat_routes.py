@@ -5,23 +5,24 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime
 
-from database import get_db
-from models import User, ChatSession, UserActivity, Competition
-from auth.dependencies import get_current_user
-from llm_service import call_openrouter
-from document_service import extract_text_from_file
+from app.db.database import get_db
+from app.models.models import User, ChatSession, UserActivity, Competition
+from app.auth.dependencies import get_current_user
+from app.services.llm_service import call_openrouter
+from app.services.document_service import extract_text_from_file
 
 router = APIRouter(prefix="/student/chat", tags=["Student Chat AI"])
 
 UPLOAD_DIR = "uploads/chat_files"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+
 @router.post("")
 async def ask_ai_student(
     prompt: str = Form(...),
     file: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     saved_file_path = None
     file_context = ""
@@ -42,9 +43,13 @@ async def ask_ai_student(
                 file_context = f"\n\n--- DOKUMEN PROPOSAL MAHASISWA ---\n{extracted_text[:1500]}\n--- AKHIR DOKUMEN ---"
 
         # 2. Ambil data lomba ASLI dari database PostgreSQL (Batasi 10 lomba terbaru)
-        # PERBAIKAN: Gunakan .limit(10) agar tidak mengirim semua lomba sekaligus ke AI
-        competitions = db.query(Competition).order_by(Competition.created_at.desc()).limit(10).all()
-        
+        competitions = (
+            db.query(Competition)
+            .order_by(Competition.created_at.desc())
+            .limit(10)
+            .all()
+        )
+
         # JIKA DATABASE KOSONG: Cegah pemanggilan LLM agar tidak terjadi halusinasi
         if not competitions or len(competitions) == 0:
             warning_msg = (
@@ -52,12 +57,12 @@ async def ask_ai_student(
                 "Saat ini belum ada data lomba terverifikasi di database EduMate AI. "
                 "Silakan minta Admin untuk menjalankan Scraper Lomba terlebih dahulu agar rekomendasi lomba dapat ditampilkan secara akurat dan real-time."
             )
-            
+
             new_chat = ChatSession(
                 user_id=current_user.id,
                 prompt=prompt,
                 response=warning_msg,
-                uploaded_file_path=saved_file_path
+                uploaded_file_path=saved_file_path,
             )
             db.add(new_chat)
             db.commit()
@@ -68,7 +73,7 @@ async def ask_ai_student(
                 "prompt": new_chat.prompt,
                 "response": new_chat.response,
                 "file_path": new_chat.uploaded_file_path,
-                "created_at": new_chat.created_at
+                "created_at": new_chat.created_at,
             }
 
         # Format data lomba asli untuk dikirim ke LLM
@@ -76,11 +81,11 @@ async def ask_ai_student(
         for idx, c in enumerate(competitions, 1):
             if c.deadline:
                 if isinstance(c.deadline, datetime):
-                    deadline_str = c.deadline.strftime('%d %B %Y')
+                    deadline_str = c.deadline.strftime("%d %B %Y")
                 else:
                     deadline_str = str(c.deadline)
             else:
-                deadline_str = 'Cek Situs Resmi'
+                deadline_str = "Cek Situs Resmi"
 
             comp_context += (
                 f"Lomba #{idx}:\n"
@@ -96,7 +101,7 @@ async def ask_ai_student(
         system_prompt = (
             "Kamu adalah EduMate AI, asisten rekomendasi lomba akademis TIK.\n"
             "ATURAN FORMAT DAN DATA SANGAT KETAT:\n"
-            "1. WAJIB TAMPILKAN HANYA MAXIMAL 3 LOMBA YANG PALING COCOK DAN PALING RELEVAN dengan proposal/projek mahasiswa.\n"
+            "1. WAJIB TAMPILKAN HANYA MAXIMAL 3 LOMBA YANG PALING COCOK DAN RELEVAN dengan proposal/projek mahasiswa.\n"
             "2. DILARANG GUNAKAN TANDA BINTANG (*) UNTUK BOLD ATAU LIST. BERSIHKAN SEMUA TANDA BINTANG KELUARAN.\n"
             "3. Gunakan angka biasa (1, 2, 3) atau strip (-) untuk daftar poin.\n"
             "4. HANYA rekomendasikan lomba yang ada dalam section 'DATA LOMBA TERVERIFIKASI DI DATABASE'.\n"
@@ -137,14 +142,14 @@ async def ask_ai_student(
             user_id=current_user.id,
             prompt=prompt,
             response=ai_response,
-            uploaded_file_path=saved_file_path
+            uploaded_file_path=saved_file_path,
         )
         db.add(new_chat)
 
         activity = UserActivity(
             user_id=current_user.id,
             activity_type="Tanya AI Lomba (Top 3 Clean RAG)",
-            description=f"Konsultasi proposal: {prompt[:40]}..."
+            description=f"Konsultasi proposal: {prompt[:40]}...",
         )
         db.add(activity)
         db.commit()
@@ -155,23 +160,25 @@ async def ask_ai_student(
             "prompt": new_chat.prompt,
             "response": new_chat.response,
             "file_path": new_chat.uploaded_file_path,
-            "created_at": new_chat.created_at
+            "created_at": new_chat.created_at,
         }
 
     except Exception as e:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Terjadi kesalahan saat memproses pertanyaan: {str(e)}"
+            detail=f"Terjadi kesalahan saat memproses pertanyaan: {str(e)}",
         )
+
 
 @router.get("/history")
 async def get_student_chat_history(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db), current_user: User = Depends(
+        get_current_user)
 ):
     """
-    Mengambil seluruh riwayat konsultasi Tanya AI milik mahasiswa yang sedang login.
+    Mengambil seluruh riwayat konsultasi Tanya AI
+    milik mahasiswa yang sedang login.
     """
     chats = (
         db.query(ChatSession)
@@ -182,40 +189,41 @@ async def get_student_chat_history(
 
     history_data = []
     for chat in chats:
-        history_data.append({
-            "id": chat.id,
-            "prompt": chat.prompt,
-            "response": chat.response,
-            "file_path": chat.uploaded_file_path,
-            "created_at": chat.created_at.isoformat() if chat.created_at else None
-        })
+        history_data.append(
+            {
+                "id": chat.id,
+                "prompt": chat.prompt,
+                "response": chat.response,
+                "file_path": chat.uploaded_file_path,
+                "created_at": chat.created_at.isoformat(
+                ) if chat.created_at else None,
+            }
+        )
 
-    return {
-        "status": "success",
-        "total": len(history_data),
-        "data": history_data
-    }
+    return {"status": "success", "total": len(
+        history_data), "data": history_data}
 
 
 @router.delete("/history/{chat_id}")
 async def delete_student_chat_history(
     chat_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Menghapus riwayat percakapan spesifik milik mahasiswa.
     """
     chat = (
         db.query(ChatSession)
-        .filter(ChatSession.id == chat_id, ChatSession.user_id == current_user.id)
+        .filter(
+            ChatSession.id == chat_id, ChatSession.user_id == current_user.id)
         .first()
     )
 
     if not chat:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Riwayat percakapan tidak ditemukan."
+            detail="Riwayat percakapan tidak ditemukan.",
         )
 
     # Hapus file fisik jika ada
@@ -230,5 +238,5 @@ async def delete_student_chat_history(
 
     return {
         "status": "success",
-        "message": f"Riwayat percakapan ID {chat_id} berhasil dihapus."
+        "message": f"Riwayat percakapan ID {chat_id} berhasil dihapus.",
     }

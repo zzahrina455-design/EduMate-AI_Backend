@@ -4,16 +4,18 @@ import re
 from bs4 import BeautifulSoup
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
-from models import Competition
-from llm_service import call_openrouter
+
+from app.models.models import Competition
+from app.services.llm_service import call_openrouter
+
 
 def extract_ti_data_with_llm(raw_items: list) -> list:
     """
-    Menggunakan LLM untuk menyaring dan mengekstrak HANYA lomba Teknik Informatika.
+    Menggunakan LLM untuk menyaring dan mengekstrak lomba.
     """
     system_prompt = (
-        "Kamu adalah kurator dan parser data lomba Teknik Informatika di Indonesia & Global.\n"
-        "Tugasmu: Dari data mentah berikut, filter dan ekstrak HANYA lomba yang relevan dengan Teknik Informatika.\n"
+        "Kamu adalah kurator dan parser data lomba di Indonesia & Global.\n"
+        "Tugasmu: Dari data mentah berikut, filter dan ekstrak HANYA lomba yang relevan.\n"
         "PENTING: Salin atau konversi tanggal deadline ASLI dari field 'raw_date' atau 'submission_period_dates' jika ada menjadi format YYYY-MM-DD. "
         "Jangan menyamaratakan tanggal deadline!\n\n"
         "Format output WAJIB berupa JSON array murni tanpa tag markdown:\n"
@@ -32,9 +34,9 @@ def extract_ti_data_with_llm(raw_items: list) -> list:
     for idx, item in enumerate(raw_items[:12], 1):
         prompt_text += (
             f"{idx}. Judul: {item.get('title')}\n"
-            f"   Deskripsi: {item.get('description')}\n"
-            f"   Tanggal/Keterangan Waktu Asli: {item.get('raw_date', 'Sesuai Pengumuman')}\n"
-            f"   URL: {item.get('url')}\n\n"
+            f"Deskripsi: {item.get('description')}\n"
+            f"Tanggal/Keterangan Waktu Asli: {item.get('raw_date', 'Sesuai Pengumuman')}\n"
+            f"URL: {item.get('url')}\n\n"
         )
 
     try:
@@ -53,7 +55,6 @@ def extract_ti_data_with_llm(raw_items: list) -> list:
     fallback_result = []
     base_date = datetime.now()
     for idx, item in enumerate(raw_items, start=1):
-        # Tambahkan interval hari berbeda (misal: 15 hari, 30 hari, 45 hari) agar deadline bervariasi
         staggered_deadline = base_date + timedelta(days=15 * idx)
         fallback_result.append({
             "title": item.get("title", "Lomba TIK Mahasiswa"),
@@ -97,7 +98,7 @@ async def fetch_and_store_ti_competitions(db: Session):
         except Exception as e:
             print(f"[AUTO-SCRAPER NOTICE] Puspresnas fetch: {e}")
 
-        # 2. LIVE SCRAPE: Devpost Hackathons API (Ambil field submission_period_dates)
+        # 2. LIVE SCRAPE: Devpost Hackathons API
         try:
             res_devpost = await client.get("https://devpost.com/api/hackathons")
             if res_devpost.status_code == 200:
