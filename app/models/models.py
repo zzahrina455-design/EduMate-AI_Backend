@@ -17,9 +17,10 @@ class User(Base):
     # ==========================
     # KOLOM PROFIL MAHASISWA
     # ==========================
-    university = Column(String, nullable=True)
+    nim = Column(String, nullable=True)
+    faculty = Column(String, nullable=True)
     major = Column(String, nullable=True)
-    bio = Column(Text, nullable=True)
+    phone = Column(String, nullable=True)
 
     # Relationships
     chat_sessions = relationship(

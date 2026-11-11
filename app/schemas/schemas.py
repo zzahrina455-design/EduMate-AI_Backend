@@ -2,10 +2,10 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from datetime import datetime
 
+
 # ==========================================
 # 1. AUTH SCHEMAS
 # ==========================================
-
 
 class UserRegister(BaseModel):
     name: str
@@ -31,9 +31,14 @@ class TokenData(BaseModel):
 # 2. USER & PROFILE SCHEMAS
 # ==========================================
 
-
 class UserUpdateProfile(BaseModel):
     name: Optional[str] = None
+    nim: Optional[str] = None
+    faculty: Optional[str] = None
+    major: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[EmailStr] = None
+    password: Optional[str] = None
 
 
 class UserCreateAdmin(BaseModel):
@@ -49,10 +54,10 @@ class UserResponse(BaseModel):
     email: EmailStr
     role: str
     created_at: datetime
-    # Menambahkan field profil agar Admin juga bisa melihat datanya
-    university: Optional[str] = None
+    nim: Optional[str] = None
+    faculty: Optional[str] = None
     major: Optional[str] = None
-    bio: Optional[str] = None
+    phone: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -61,17 +66,19 @@ class UserResponse(BaseModel):
 # --- Schema Khusus Untuk Fitur Profile ---
 class UserProfileBase(BaseModel):
     name: str
-    email: str
-    university: Optional[str] = None
+    email: EmailStr
+    nim: Optional[str] = None
+    faculty: Optional[str] = None
     major: Optional[str] = None
-    bio: Optional[str] = None
+    phone: Optional[str] = None
 
 
 class UserProfileUpdate(BaseModel):
     name: Optional[str] = None
-    university: Optional[str] = None
+    nim: Optional[str] = None
+    faculty: Optional[str] = None
     major: Optional[str] = None
-    bio: Optional[str] = None
+    phone: Optional[str] = None
 
 
 class UserProfileResponse(UserProfileBase):
@@ -85,7 +92,6 @@ class UserProfileResponse(UserProfileBase):
 # ==========================================
 # 3. ADMIN DASHBOARD SCHEMAS
 # ==========================================
-
 
 class AdminDashboardStats(BaseModel):
     total_users: int

@@ -4,9 +4,9 @@ from datetime import datetime
 
 from app.db.database import get_db
 from app.models.models import User, Competition
-from app import schemas  # Menggunakan app.schemas
+from app.schemas import schemas
 from app.auth.dependencies import get_current_user
-from app.services.scraper_service import fetch_and_store_ti_competitions
+from app.services.apify_service import fetch_and_store_instagram_competitions
 
 router = APIRouter(prefix="/student", tags=["Student"])
 
@@ -29,15 +29,17 @@ async def update_profile(
 ):
     """Memperbarui data profil mahasiswa yang sedang login."""
 
-    # Update hanya field yang dikirimkan (tidak None)
+    # Update hanya field yang dikirimkan (tidak None) sesuai skema baru
     if profile_update.name is not None:
         current_user.name = profile_update.name
-    if profile_update.university is not None:
-        current_user.university = profile_update.university
+    if profile_update.nim is not None:
+        current_user.nim = profile_update.nim
+    if profile_update.faculty is not None:
+        current_user.faculty = profile_update.faculty
     if profile_update.major is not None:
         current_user.major = profile_update.major
-    if profile_update.bio is not None:
-        current_user.bio = profile_update.bio
+    if profile_update.phone is not None:
+        current_user.phone = profile_update.phone
 
     db.commit()
     db.refresh(current_user)
@@ -51,32 +53,16 @@ async def update_profile(
 
 
 @router.get("/competitions")
-async def get_competitions(
-    db: Session = Depends(get_db), current_user: User = Depends(
-        get_current_user)
-):
-    total_lomba = db.query(Competition).count()
+async def get_competitions(db: Session = Depends(get_db)):
+    # Cek apakah data kompetisi kosong
+    competitions = db.query(Competition).all()
 
-    # Jika database kosong, jalankan scraper otomatis
-    if total_lomba == 0:
-        print(
-            "[AUTO-SCRAPER] Database kosong, mengambil data live dari web...")
-        await fetch_and_store_ti_competitions(db)
+    if not competitions:
+        # Jika kosong, otomatis tarik dari Instagram via Apify
+        try:
+            await fetch_and_store_instagram_competitions(db)
+            competitions = db.query(Competition).all()
+        except Exception as e:
+            print(f"[AUTO-APIFY ERROR] Gagal menarik data otomatis: {e}")
 
-    competitions = db.query(Competition).order_by(
-        Competition.created_at.desc()).all()
-
-    result = []
-    for comp in competitions:
-        result.append(
-            {
-                "id": comp.id,
-                "title": comp.title,
-                "description": comp.description,
-                "requirements": comp.requirements,
-                "deadline": comp.deadline if comp.deadline else "Segera",
-                "social_media_link": comp.social_media_link,
-            }
-        )
-
-    return result
+    return competitions

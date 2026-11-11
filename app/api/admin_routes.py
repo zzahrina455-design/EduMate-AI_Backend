@@ -19,7 +19,7 @@ from app.schemas.schemas import (
     UserUpdateProfile,
 )
 from app.auth.dependencies import get_current_admin_user
-from app.services.scraper_service import fetch_and_store_ti_competitions
+from app.services.apify_service import fetch_and_store_instagram_competitions
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -267,8 +267,18 @@ def update_admin_profile(
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin_user),
 ):
-    if profile_data.name:
+    print("DATA YANG DITERIMA DARI FRONTEND:", profile_data.dict())
+
+    if profile_data.name is not None:
         admin.name = profile_data.name
+    if profile_data.nim is not None:
+        admin.nim = profile_data.nim
+    if profile_data.faculty is not None:
+        admin.faculty = profile_data.faculty
+    if profile_data.major is not None:
+        admin.major = profile_data.major
+    if profile_data.phone is not None:
+        admin.phone = profile_data.phone
 
     if profile_data.email and profile_data.email != admin.email:
         existing_email = db.query(User).filter(
@@ -370,17 +380,18 @@ async def sync_competitions_data(
     db: Session = Depends(get_db), admin: User = Depends(
         get_current_admin_user)
 ):
-    await fetch_and_store_ti_competitions(db)
+    # Panggil fungsi Apify Instagram
+    await fetch_and_store_instagram_competitions(db)
 
     # Log Aktivitas Admin
     activity = UserActivity(
         user_id=admin.id,
-        activity_type="Info Lomba",
-        description="Admin memicu sinkronisasi otomatis data lomba",
+        activity_type="Info Lomba IG",
+        description="Admin memicu sinkronisasi otomatis data lomba dari Instagram (Apify)",
     )
     db.add(activity)
     db.commit()
 
     return {
-        "message": "Pembaruan data lomba berhasil dijalankan!"
+        "message": "Pembaruan data lomba dari Instagram berhasil dijalankan!"
     }

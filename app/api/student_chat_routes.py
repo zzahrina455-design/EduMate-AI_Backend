@@ -28,7 +28,7 @@ async def ask_ai_student(
     file_context = ""
 
     try:
-        # 1. Ekstrak teks dari berkas jika diunggah
+        # 1. Ekstrak teks dari berkas jika diunggah (Proposal/Dokumen Mahasiswa)
         if file and file.filename:
             file_ext = os.path.splitext(file.filename)[1].lower()
             filename = f"{current_user.id}_{int(datetime.now().timestamp())}{file_ext}"
@@ -39,10 +39,9 @@ async def ask_ai_student(
 
             extracted_text = extract_text_from_file(saved_file_path, file_ext)
             if extracted_text:
-                # PERBAIKAN: Batasi teks proposal maksimal 1500 karakter agar tidak boros token
-                file_context = f"\n\n--- DOKUMEN PROPOSAL MAHASISWA ---\n{extracted_text[:1500]}\n--- AKHIR DOKUMEN ---"
+                file_context = f"\n\n--- DOKUMEN PROPOSAL / PROJEK MAHASISWA ---\n{extracted_text[:1500]}\n--- AKHIR DOKUMEN ---"
 
-        # 2. Ambil data lomba ASLI dari database PostgreSQL (Batasi 10 lomba terbaru)
+        # 2. Ambil data lomba dari hasil scraping Instagram Apify di database PostgreSQL (Batasi 10 lomba terbaru)
         competitions = (
             db.query(Competition)
             .order_by(Competition.created_at.desc())
@@ -50,12 +49,12 @@ async def ask_ai_student(
             .all()
         )
 
-        # JIKA DATABASE KOSONG: Cegah pemanggilan LLM agar tidak terjadi halusinasi
+        # JIKA DATABASE KOSONG: Cegah halusinasi LLM
         if not competitions or len(competitions) == 0:
             warning_msg = (
-                "⚠️ Database Lomba Belum Tersedia\n\n"
-                "Saat ini belum ada data lomba terverifikasi di database EduMate AI. "
-                "Silakan minta Admin untuk menjalankan Scraper Lomba terlebih dahulu agar rekomendasi lomba dapat ditampilkan secara akurat dan real-time."
+                "⚠️ Database Lomba Instagram Belum Tersedia\n\n"
+                "Saat ini belum ada data lomba dari Instagram yang disinkronkan. "
+                "Silakan minta Admin untuk menjalankan menu sinkronisasi lomba agar rekomendasi lomba real-time dapat ditampilkan."
             )
 
             new_chat = ChatSession(
@@ -76,68 +75,42 @@ async def ask_ai_student(
                 "created_at": new_chat.created_at,
             }
 
-        # Format data lomba asli untuk dikirim ke LLM
-        comp_context = "\n--- DATA LOMBA TERVERIFIKASI DI DATABASE EDUMATE AI ---\n"
+        # Format data lomba dari Instagram untuk dikirim ke LLM
+        comp_context = "\n--- DATA LOMBA INSTAGRAM TERVERIFIKASI DI DATABASE ---\n"
         for idx, c in enumerate(competitions, 1):
-            if c.deadline:
-                if isinstance(c.deadline, datetime):
-                    deadline_str = c.deadline.strftime("%d %B %Y")
-                else:
-                    deadline_str = str(c.deadline)
-            else:
-                deadline_str = "Cek Situs Resmi"
-
             comp_context += (
                 f"Lomba #{idx}:\n"
                 f"Nama Lomba: {c.title}\n"
-                f"Deskripsi: {c.description}\n"
+                f"Deskripsi / Caption IG: {c.description}\n"
                 f"Persyaratan: {c.requirements}\n"
-                f"Deadline Asli: {deadline_str}\n"
-                f"Link Resmi: {c.social_media_link or 'Tidak tersedia'}\n\n"
+                f"Link Postingan IG: {c.social_media_link or 'Tidak tersedia'}\n\n"
             )
         comp_context += "--- AKHIR DATA LOMBA ---\n"
 
-        # 3. System Prompt Ketat: Maksimal 3 Lomba, Tanpa Tanda Bintang & RAG Nyata
+        # 3. System Prompt
         system_prompt = (
-            "Kamu adalah EduMate AI, asisten rekomendasi lomba akademis TIK.\n"
-            "ATURAN FORMAT DAN DATA SANGAT KETAT:\n"
-            "1. WAJIB TAMPILKAN HANYA MAXIMAL 3 LOMBA YANG PALING COCOK DAN RELEVAN dengan proposal/projek mahasiswa.\n"
-            "2. DILARANG GUNAKAN TANDA BINTANG (*) UNTUK BOLD ATAU LIST. BERSIHKAN SEMUA TANDA BINTANG KELUARAN.\n"
-            "3. Gunakan angka biasa (1, 2, 3) atau strip (-) untuk daftar poin.\n"
-            "4. HANYA rekomendasikan lomba yang ada dalam section 'DATA LOMBA TERVERIFIKASI DI DATABASE'.\n"
-            "5. Salin Deadline Asli dan Link Resmi KETAT PERSIS seperti yang tercantum di database. DILARANG MENGARANG ATAU MENYAMARATAKAN TANGGAL DEADLINE.\n"
-            "6. DILARANG menggunakan format TABEL Markdown.\n\n"
-            "GUNAKAN FORMAT OUTPUT BERSIH DENGAN STRUKTUR INI:\n\n"
-            "ANALISIS RINGKAS PROJEK\n"
-            "- Nama/Topik Projek: [Isi topik]\n"
-            "- Potensi Kunci Projek: [Isi potensi]\n\n"
-            "REKOMENDASI 3 LOMBA TERBAIK\n\n"
-            "1. [Nama Lomba Pertama Persis Database]\n"
-            "- Deadline Asli: [Tanggal Deadline Persis Database]\n"
-            "- Persyaratan: [Persyaratan Persis Database]\n"
-            "- Kelebihan Projek Ini: [Alasan kontekstual kecocokan]\n"
-            "- Sisi yang Perlu Ditingkatkan: [Saran perbaikan]\n"
-            "- Link Resmi Lomba: [Link Persis Database]\n\n"
-            "2. [Nama Lomba Kedua Persis Database]\n"
-            "- Deadline Asli: [Tanggal Deadline Persis Database]\n"
-            "- Persyaratan: [Persyaratan Persis Database]\n"
-            "- Kelebihan Projek Ini: [Alasan kontekstual kecocokan]\n"
-            "- Sisi yang Perlu Ditingkatkan: [Saran perbaikan]\n"
-            "- Link Resmi Lomba: [Link Persis Database]\n\n"
-            "3. [Nama Lomba Ketiga Persis Database]\n"
-            "- Deadline Asli: [Tanggal Deadline Persis Database]\n"
-            "- Persyaratan: [Persyaratan Persis Database]\n"
-            "- Kelebihan Projek Ini: [Alasan kontekstual kecocokan]\n"
-            "- Sisi yang Perlu Ditingkatkan: [Saran perbaikan]\n"
-            "- Link Resmi Lomba: [Link Persis Database]"
+            "Kamu adalah EduMate AI, asisten konsultan kompetisi IT cerdas.\n"
+            "TUGAS UTAMA: Analisis proposal/projek mahasiswa dan cocokkan dengan data lomba dari Instagram di database.\n"
+            "ATURAN FORMAT DAN OUTPUT KETAT:\n"
+            "1. WAJIB tampilkan maksimal 3 lomba yang paling relevan dan cocok.\n"
+            "2. DILARANG menggunakan tanda bintang (*) untuk markdown bold/italic.\n"
+            "3. Untuk SETIAP rekomendasi lomba, wajib menyajikan tepat 5 poin berikut:\n"
+            "   - Nama Lomba yang relevan dan cocok\n"
+            "   - Syarat Lomba\n"
+            "   - Peluang Lolos Projek (dalam bentuk persentase %, misal: 85% beserta alasannya)\n"
+            "   - Apa yang Perlu Diperbaiki oleh projek agar meningkatkan peluang lolos\n"
+            "   - Link Lomba (Salin persis link social_media_link dari database)\n"
+            "4. DILARANG menggunakan format tabel markdown."
         )
 
-        full_prompt = f"Pertanyaan Mahasiswa: {prompt}{file_context}\n{comp_context}"
+        full_prompt = (
+            f"Pertanyaan/Konsultasi Mahasiswa: {prompt}{file_context}\n{comp_context}"
+        )
 
-        # 4. Eksekusi LLM
+        # 4. Eksekusi LLM Groq
         ai_response = call_openrouter(full_prompt, system_prompt)
 
-        # 5. Simpan Riwayat
+        # 5. Simpan Riwayat Percakapan
         new_chat = ChatSession(
             user_id=current_user.id,
             prompt=prompt,
@@ -148,8 +121,8 @@ async def ask_ai_student(
 
         activity = UserActivity(
             user_id=current_user.id,
-            activity_type="Tanya AI Lomba (Top 3 Clean RAG)",
-            description=f"Konsultasi proposal: {prompt[:40]}...",
+            activity_type="Tanya AI Lomba (Instagram RAG)",
+            description=f"Konsultasi lomba Instagram: {prompt[:40]}...",
         )
         db.add(activity)
         db.commit()
@@ -173,13 +146,8 @@ async def ask_ai_student(
 
 @router.get("/history")
 async def get_student_chat_history(
-    db: Session = Depends(get_db), current_user: User = Depends(
-        get_current_user)
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
-    """
-    Mengambil seluruh riwayat konsultasi Tanya AI
-    milik mahasiswa yang sedang login.
-    """
     chats = (
         db.query(ChatSession)
         .filter(ChatSession.user_id == current_user.id)
@@ -195,13 +163,11 @@ async def get_student_chat_history(
                 "prompt": chat.prompt,
                 "response": chat.response,
                 "file_path": chat.uploaded_file_path,
-                "created_at": chat.created_at.isoformat(
-                ) if chat.created_at else None,
+                "created_at": chat.created_at.isoformat() if chat.created_at else None,
             }
         )
 
-    return {"status": "success", "total": len(
-        history_data), "data": history_data}
+    return {"status": "success", "total": len(history_data), "data": history_data}
 
 
 @router.delete("/history/{chat_id}")
@@ -210,13 +176,9 @@ async def delete_student_chat_history(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Menghapus riwayat percakapan spesifik milik mahasiswa.
-    """
     chat = (
         db.query(ChatSession)
-        .filter(
-            ChatSession.id == chat_id, ChatSession.user_id == current_user.id)
+        .filter(ChatSession.id == chat_id, ChatSession.user_id == current_user.id)
         .first()
     )
 
@@ -226,7 +188,6 @@ async def delete_student_chat_history(
             detail="Riwayat percakapan tidak ditemukan.",
         )
 
-    # Hapus file fisik jika ada
     if chat.uploaded_file_path and os.path.exists(chat.uploaded_file_path):
         try:
             os.remove(chat.uploaded_file_path)
