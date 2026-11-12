@@ -28,7 +28,7 @@ async def ask_ai_student(
     file_context = ""
 
     try:
-        # 1. Ekstrak teks dari berkas jika diunggah (Proposal/Dokumen Mahasiswa)
+        # 1. Ekstrak teks dari berkas jika diunggah
         if file and file.filename:
             file_ext = os.path.splitext(file.filename)[1].lower()
             filename = f"{current_user.id}_{int(datetime.now().timestamp())}{file_ext}"
@@ -39,9 +39,9 @@ async def ask_ai_student(
 
             extracted_text = extract_text_from_file(saved_file_path, file_ext)
             if extracted_text:
-                file_context = f"\n\n--- DOKUMEN PROPOSAL / PROJEK MAHASISWA ---\n{extracted_text[:1500]}\n--- AKHIR DOKUMEN ---"
+                file_context = f"\n\n DOKUMEN PROPOSAL / PROJEK MAHASISWA \n{extracted_text[:1500]}\n--- AKHIR DOKUMEN ---"
 
-        # 2. Ambil data lomba dari hasil scraping Instagram Apify di database PostgreSQL (Batasi 10 lomba terbaru)
+        # 2. Ambil data lomba dari hasil scraping Instagram
         competitions = (
             db.query(Competition)
             .order_by(Competition.created_at.desc())
@@ -53,8 +53,7 @@ async def ask_ai_student(
         if not competitions or len(competitions) == 0:
             warning_msg = (
                 "⚠️ Database Lomba Instagram Belum Tersedia\n\n"
-                "Saat ini belum ada data lomba dari Instagram yang disinkronkan. "
-                "Silakan minta Admin untuk menjalankan menu sinkronisasi lomba agar rekomendasi lomba real-time dapat ditampilkan."
+                "Saat ini belum ada data lomba dari Instagram. "
             )
 
             new_chat = ChatSession(
@@ -76,7 +75,7 @@ async def ask_ai_student(
             }
 
         # Format data lomba dari Instagram untuk dikirim ke LLM
-        comp_context = "\n--- DATA LOMBA INSTAGRAM TERVERIFIKASI DI DATABASE ---\n"
+        comp_context = "\n DATA LOMBA INSTAGRAM TERVERIFIKASI DI DATABASE \n"
         for idx, c in enumerate(competitions, 1):
             comp_context += (
                 f"Lomba #{idx}:\n"
@@ -90,14 +89,14 @@ async def ask_ai_student(
         # 3. System Prompt
         system_prompt = (
             "Kamu adalah EduMate AI, asisten konsultan kompetisi IT cerdas.\n"
-            "TUGAS UTAMA: Analisis proposal/projek mahasiswa dan cocokkan dengan data lomba dari Instagram di database.\n"
+            "TUGAS UTAMA: Analisis projek mahasiswa dan cocokkan dengan lomba dari Instagram di database.\n"
             "ATURAN FORMAT DAN OUTPUT KETAT:\n"
             "1. WAJIB tampilkan maksimal 3 lomba yang paling relevan dan cocok.\n"
             "2. DILARANG menggunakan tanda bintang (*) untuk markdown bold/italic.\n"
-            "3. Untuk SETIAP rekomendasi lomba, wajib menyajikan tepat 5 poin berikut:\n"
+            "3. Untuk SETIAP rekomendasi lomba, wajib menyajikan 5 poin :\n"
             "   - Nama Lomba yang relevan dan cocok\n"
             "   - Syarat Lomba\n"
-            "   - Peluang Lolos Projek (dalam bentuk persentase %, misal: 85% beserta alasannya)\n"
+            "   - Peluang Lolos Projek (dalam bentuk persentase %, dan alasannya)\n"
             "   - Apa yang Perlu Diperbaiki oleh projek agar meningkatkan peluang lolos\n"
             "   - Link Lomba (Salin persis link social_media_link dari database)\n"
             "4. DILARANG menggunakan format tabel markdown."
@@ -146,7 +145,8 @@ async def ask_ai_student(
 
 @router.get("/history")
 async def get_student_chat_history(
-    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db), current_user: User = Depends(
+        get_current_user)
 ):
     chats = (
         db.query(ChatSession)
@@ -163,11 +163,13 @@ async def get_student_chat_history(
                 "prompt": chat.prompt,
                 "response": chat.response,
                 "file_path": chat.uploaded_file_path,
-                "created_at": chat.created_at.isoformat() if chat.created_at else None,
+                "created_at": chat.created_at.isoformat()
+                if chat.created_at else None,
             }
         )
 
-    return {"status": "success", "total": len(history_data), "data": history_data}
+    return {"status": "success", "total": len(
+        history_data), "data": history_data}
 
 
 @router.delete("/history/{chat_id}")
@@ -178,7 +180,8 @@ async def delete_student_chat_history(
 ):
     chat = (
         db.query(ChatSession)
-        .filter(ChatSession.id == chat_id, ChatSession.user_id == current_user.id)
+        .filter(
+            ChatSession.id == chat_id, ChatSession.user_id == current_user.id)
         .first()
     )
 

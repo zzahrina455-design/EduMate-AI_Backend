@@ -20,7 +20,7 @@ def is_valid_target_post(caption: str) -> bool:
     1. Kompetisi / Lomba / Hackathon / Challenge
     2. Pendanaan / Funding / Inkubasi / PKM
     3. Hibah / Grant / Call for Proposal
-    Serta membuang pelatihan/webinar murni yang tidak ada unsur lomba/pendanaan.
+    Serta membuang pelatihan/webinar murni yang tidak ada unsur lomba.
     """
     text = caption.lower()
 
@@ -63,7 +63,7 @@ def is_valid_target_post(caption: str) -> bool:
     # Cek apakah mengandung setidaknya satu kata kunci target
     has_target = any(kw in text for kw in target_keywords)
 
-    # Filter pengecualian: Jika ini murni webinar/pelatihan biasa TANPA unsur lomba/hibah/pendanaan, tolak
+    # Filter pengecualian: Jika ini murni webinar/pelatihan biasa tolak
     is_pure_webinar_or_training = any(
         ex in text
         for ex in [
@@ -107,7 +107,7 @@ async def fetch_and_store_instagram_competitions(db: Session):
     ]
 
     print(
-        "[APIFY] Menjalankan Instagram Scraper Actor (Filter: Kompetisi, Pendanaan, Hibah)..."
+        "[APIFY] Menjalankan Instagram Scraper Actor (Filter: Kompetisi)..."
     )
 
     try:
@@ -126,19 +126,19 @@ async def fetch_and_store_instagram_competitions(db: Session):
         if not dataset_id and hasattr(run, "defaultDatasetId"):
             dataset_id = run.defaultDatasetId
         if not dataset_id and isinstance(run, dict):
-            dataset_id = run.get("default_dataset_id") or run.get("defaultDatasetId")
+            dataset_id = run.get(
+                "default_dataset_id") or run.get("defaultDatasetId")
         if not dataset_id:
             try:
                 run_dict = dict(run)
-                dataset_id = run_dict.get("default_dataset_id") or run_dict.get(
-                    "defaultDatasetId"
-                )
+                dataset_id = run_dict.get(
+                    "default_dataset_id") or run_dict.get("defaultDatasetId")
             except Exception:
                 pass
 
         if not dataset_id:
             raise ValueError(
-                "Gagal mendapatkan default_dataset_id dari hasil eksekusi Apify."
+                "Gagal mendapatkan default_dataset_id dari hasil eksekusi."
             )
 
         dataset_items = client.dataset(dataset_id).iterate_items()
@@ -167,7 +167,7 @@ async def fetch_and_store_instagram_competitions(db: Session):
                     new_comp = Competition(
                         title=title,
                         description=caption[:1000],
-                        requirements="Cek detail persyaratan lengkap pada link postingan Instagram resmi.",
+                        requirements="Cek detail persyaratan pada link",
                         deadline=datetime.utcnow(),
                         social_media_link=post_url,
                     )
@@ -176,7 +176,7 @@ async def fetch_and_store_instagram_competitions(db: Session):
 
         db.commit()
         print(
-            f"[APIFY SUCCESS] Berhasil menyimpan {new_count} data baru ke database!"
+            f"[APIFY SUCCESS] Berhasil menyimpan {new_count} data baru"
         )
         return {"message": f"Berhasil sinkronisasi {new_count} data baru."}
 

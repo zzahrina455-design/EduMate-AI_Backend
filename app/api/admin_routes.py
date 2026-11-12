@@ -387,7 +387,7 @@ async def sync_competitions_data(
     activity = UserActivity(
         user_id=admin.id,
         activity_type="Info Lomba IG",
-        description="Admin memicu sinkronisasi otomatis data lomba dari Instagram (Apify)",
+        description="Admin triggered automatic competition data update",
     )
     db.add(activity)
     db.commit()

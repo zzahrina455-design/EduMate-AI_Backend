@@ -26,7 +26,7 @@ def get_filtered_groq_models():
 
         # Kata kunci model yang WAJIB DIABAIKAN (bukan model chat umum)
         ignored_keywords = [
-            "safeguard", "guard", "whisper", "orpheus", "allam", 
+            "safeguard", "guard", "whisper", "orpheus", "allam",
             "audio", "vision", "embed", "prompt-guard"
         ]
 
